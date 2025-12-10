@@ -1,8 +1,4 @@
-# Results
-
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
-
-This folder contains all evaluation results, visualizations, and analysis outputs from the melanoma classification experiments.
+# Melanoma Classification with Synthetic Data Augmentation
 
 ## Table of Contents
 
@@ -16,6 +12,8 @@ This folder contains all evaluation results, visualizations, and analysis output
 - [📄 License](#-license)
 
 ## 🎯 Overview
+
+https://github.com/user-attachments/assets/880d194c-4e94-415a-9241-0e7575e4b875
 
 The results directory contains comprehensive evaluation outputs from training and testing 30 different classifier models across 5 dataset configurations. This includes performance metrics, visual explanations, confusion matrices, and synthetic image samples.
 
