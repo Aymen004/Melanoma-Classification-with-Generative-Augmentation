@@ -9,9 +9,10 @@ Advanced melanoma detection using deep learning with synthetic data augmentation
 
 ## 🎥 Demo Video
 
-[🎬 Watch the Streamlit App Demo](https://your-demo-video-link-here)
 
-*Replace with your actual demo video link*
+https://github.com/user-attachments/assets/6e04e21d-6e78-4501-ba35-a59c206af014
+
+
 
 ## 📋 Table of Contents
 
