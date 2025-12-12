@@ -606,6 +606,137 @@ class VAEAnomalyDetector:
         plt.show()
         return fig
     
+    def generate_anomaly_heatmaps(
+        self,
+        images: torch.Tensor,
+        num_samples: int = 8,
+        save_path: str = None,
+        colormap: str = 'hot'
+    ):
+        """
+        Génère des heatmaps d'anomalie pixel-par-pixel
+        
+        Synergie 2: XAI - Visualise exactement les zones que le VAE 
+        n'arrive pas à reconstruire (zones pathologiques)
+        
+        Args:
+            images: Images à analyser [B, C, H, W]
+            num_samples: Nombre d'images à visualiser
+            save_path: Chemin pour sauvegarder la figure
+            colormap: Colormap matplotlib ('hot', 'jet', 'viridis')
+            
+        Returns:
+            fig: Figure matplotlib
+            heatmaps: Tensor des heatmaps [B, H, W]
+        """
+        self.model.eval()
+        images = images[:num_samples].to(self.device)
+        
+        with torch.no_grad():
+            reconstructions = self.model.reconstruct(images)
+            
+            # Calculer la différence pixel-par-pixel
+            # |Image Originale - Image Reconstruite|
+            diff = torch.abs(images - reconstructions)
+            
+            # Moyenner sur les canaux RGB pour obtenir une heatmap 2D
+            heatmaps = diff.mean(dim=1)  # [B, H, W]
+            
+            # Normaliser pour la visualisation
+            heatmaps_vis = heatmaps.cpu().numpy()
+        
+        # Visualisation
+        fig, axes = plt.subplots(3, num_samples, figsize=(2*num_samples, 6))
+        
+        for i in range(num_samples):
+            # Original
+            img_np = images[i].cpu().permute(1, 2, 0).numpy()
+            axes[0, i].imshow(img_np)
+            axes[0, i].set_title('Original')
+            axes[0, i].axis('off')
+            
+            # Reconstruction
+            recon_np = reconstructions[i].cpu().permute(1, 2, 0).numpy()
+            axes[1, i].imshow(recon_np)
+            axes[1, i].set_title('Reconstruction')
+            axes[1, i].axis('off')
+            
+            # Heatmap d'anomalie
+            im = axes[2, i].imshow(heatmaps_vis[i], cmap=colormap)
+            axes[2, i].set_title(f'Anomaly Heatmap')
+            axes[2, i].axis('off')
+            plt.colorbar(im, ax=axes[2, i], fraction=0.046, pad=0.04)
+        
+        plt.suptitle('Heatmaps d\'Anomalie - Zones que le VAE ne peut pas reconstruire')
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+            logger.info(f"Anomaly heatmaps saved to {save_path}")
+        
+        plt.show()
+        return fig, heatmaps
+    
+    def generate_overlay_heatmap(
+        self,
+        image: torch.Tensor,
+        alpha: float = 0.5,
+        colormap: str = 'jet',
+        threshold_percentile: float = 70
+    ) -> Tuple[np.ndarray, float]:
+        """
+        Génère une heatmap d'anomalie superposée sur l'image originale
+        Très intuitif pour les médecins - montre les zones suspectes
+        
+        Args:
+            image: Image unique [C, H, W] ou [1, C, H, W]
+            alpha: Transparence de la heatmap (0=invisible, 1=opaque)
+            colormap: Colormap pour la heatmap
+            threshold_percentile: Percentile pour filtrer le bruit de fond
+            
+        Returns:
+            overlay: Image avec heatmap superposée [H, W, 3]
+            anomaly_score: Score d'anomalie global
+        """
+        self.model.eval()
+        
+        if image.dim() == 3:
+            image = image.unsqueeze(0)
+        
+        image = image.to(self.device)
+        
+        with torch.no_grad():
+            reconstruction = self.model.reconstruct(image)
+            
+            # Différence absolue
+            diff = torch.abs(image - reconstruction)
+            heatmap = diff.mean(dim=1).squeeze().cpu().numpy()  # [H, W]
+            
+            # Score global
+            anomaly_score = float(heatmap.mean())
+            
+            # Seuiller pour ne montrer que les zones les plus anormales
+            threshold = np.percentile(heatmap, threshold_percentile)
+            heatmap_thresholded = np.where(heatmap > threshold, heatmap, 0)
+            
+            # Normaliser entre 0 et 1
+            if heatmap_thresholded.max() > 0:
+                heatmap_thresholded = heatmap_thresholded / heatmap_thresholded.max()
+        
+        # Convertir l'image en numpy
+        img_np = image.squeeze().cpu().permute(1, 2, 0).numpy()
+        
+        # Créer la heatmap colorée
+        import matplotlib.cm as cm
+        cmap = cm.get_cmap(colormap)
+        heatmap_colored = cmap(heatmap_thresholded)[:, :, :3]  # RGB seulement
+        
+        # Superposer
+        overlay = (1 - alpha) * img_np + alpha * heatmap_colored
+        overlay = np.clip(overlay, 0, 1)
+        
+        return overlay, anomaly_score
+    
     def save_calibration(self, path: str):
         """Sauvegarde les paramètres de calibration"""
         calibration_data = {
