@@ -18,6 +18,103 @@ L'approche VAE **renverse le problème de classification** :
 
 ---
 
+## 🔗 Synergies avec le Pipeline Global
+
+Ce module ne remplace pas le DenseNet, il le **renforce** via 3 synergies clés:
+
+### ✅ Synergie 1: Triage Préliminaire (IMPLÉMENTÉ)
+
+Le système fonctionne en deux temps:
+
+```
+┌─────────────┐
+│   Image     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐     Anomalie?
+│   VAE Check     │────────► OUI ──► ⚠️  Priorité HAUTE pour dermatologue
+└─────────┬───────┘                    (quelle que soit l'avis du DenseNet)
+          │
+          │ NON (Normal)
+          ▼
+┌─────────────────┐
+│ DenseNet Clf    │────────► Classification standard
+└─────────────────┘
+```
+
+**Code:**
+```python
+from anomaly_detection import HybridClassifier
+
+hybrid = HybridClassifier(
+    vae_model_path='vae_output/best_model.pth',
+    classifier_model_path='models/densenet.pth',
+    fusion_strategy='cascade'  # ← Triage préliminaire
+)
+```
+
+### ✅ Synergie 2: XAI et Cartes d'Erreur (IMPLÉMENTÉ)
+
+Le VAE offre une **explicabilité native** via les heatmaps d'anomalie:
+
+```python
+# Générer les heatmaps d'anomalie
+fig, heatmaps = detector.generate_anomaly_heatmaps(
+    images=test_images,
+    colormap='hot'
+)
+
+# Superposer sur l'image originale (très intuitif pour les médecins)
+overlay, score = detector.generate_overlay_heatmap(
+    image=lesion_image,
+    alpha=0.5
+)
+```
+
+**Visualisation:**
+```
+┌──────────────┬──────────────┬─────────────────┐
+│   Original   │ Reconstruction│ Heatmap Anomalie│
+├──────────────┼──────────────┼─────────────────┤
+│     🔵      │      🔵      │     [COOL]      │  ← Zone normale
+│    🔴🔴     │     🔵🔵     │   [🔥 HOT]      │  ← Zone pathologique
+│     🔵      │      🔵      │     [COOL]      │
+└──────────────┴──────────────┴─────────────────┘
+```
+
+La heatmap montre **exactement** les zones que le VAE ne peut pas reconstruire!
+
+### ✅ Synergie 3: Utilisation du DDPM (IMPLÉMENTÉ)
+
+Si vous manquez de données bénignes variées, utilisez le **DDPM existant** pour générer plus de données d'entraînement saines:
+
+```bash
+# 1. Générer 1000 images bénignes avec DDPM
+python anomaly_detection/ddpm_benign_augmentation.py \
+    --ddpm_model_path generators/ddpm/checkpoints/best_model.pth \
+    --num_samples 1000 \
+    --quality_filter \
+    --output_dir ./benign_augmented
+
+# 2. Combiner avec les vraies données (70% réel, 30% synthétique)
+python anomaly_detection/ddpm_benign_augmentation.py \
+    --ddpm_model_path generators/ddpm/checkpoints/best_model.pth \
+    --num_samples 500 \
+    --real_data_dir ./data/benign_real \
+    --synthetic_ratio 0.3 \
+    --combined_output_dir ./benign_combined
+
+# 3. Entraîner le VAE sur le dataset enrichi
+python anomaly_detection/train_vae.py \
+    --img_dir ./benign_combined \
+    --epochs 100
+```
+
+**Avantage:** VAE plus robuste à la diversité normale de la peau (différents types de peau, éclairages, âges, etc.)
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -149,26 +246,7 @@ print(f"Improvement over classifier alone: {metrics['improvement_over_classifier
 
 ---
 
-## 📊 Processus de Calibrage du Seuil
 
-```
-Distribution des Erreurs de Reconstruction
-┌────────────────────────────────────────────────────────┐
-│                                                        │
-│    ████                                               │
-│   ██████     Bénins                    Malins         │
-│  ████████   (erreurs                  (erreurs        │
-│ ██████████   faibles)                  élevées)       │
-│████████████                              ██           │
-│██████████████                          ████           │
-│████████████████                       ██████          │
-│████████████████████                 ██████████        │
-│──────────────────────│────────────────────────────────│
-│                      │                                │
-│                   SEUIL                               │
-│            (95ème percentile)                         │
-└────────────────────────────────────────────────────────┘
-```
 
 1. Passer les images de validation dans le VAE
 2. Calculer l'erreur de reconstruction (MSE) pour chaque image
