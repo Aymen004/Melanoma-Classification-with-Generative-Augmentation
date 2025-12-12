@@ -154,10 +154,57 @@ All 30 trained models are available on Hugging Face Hub:
 - Comprehensive performance report
 - Cross-validation results
 
+## � VAE Anomaly Detection (New!)
+
+### Overview
+A new **Variational Autoencoder (VAE)** based anomaly detection module has been added to complement the supervised classification pipeline.
+
+**Key Concept**: Instead of learning what cancer looks like, the VAE learns what "normal" (benign) skin looks like. Anything that deviates too much from this normality is flagged as an anomaly.
+
+### Advantages
+- 🎯 **Independence from rare data**: No need for many melanoma examples
+- 🛡️ **Out-of-Distribution safety net**: Detects cases never seen during training  
+- ⚡ **Complementary to supervised classifier**: Reduces critical false negatives
+
+### Quick Start
+```bash
+# Train VAE on benign images only
+python anomaly_detection/train_vae.py \
+    --img_dir ./data/benign_images \
+    --epochs 100 \
+    --latent_dim 256
+
+# Run complete demo with synthetic data
+python anomaly_detection/example_vae_pipeline.py --use_synthetic
+```
+
+### Hybrid Classification
+Combine VAE anomaly detection with the DenseNet classifier for more robust predictions:
+
+```python
+from anomaly_detection import HybridClassifier
+
+hybrid = HybridClassifier(
+    vae_model_path='vae_output/checkpoints/best_model.pth',
+    classifier_model_path='models/densenet_best.pth',
+    fusion_strategy='weighted'
+)
+hybrid.calibrate(val_loader, val_labels)
+predictions = hybrid.predict(test_loader)
+```
+
+See [anomaly_detection/README.md](anomaly_detection/README.md) for detailed documentation.
+
 ## 📂 Project Structure
 
 ```
 project/
+├── anomaly_detection/    # 🆕 VAE-based anomaly detection
+│   ├── VAE_model.py      # VAE architecture
+│   ├── train_vae.py      # Training on benign images
+│   ├── inference_vae.py  # Anomaly detection & calibration
+│   ├── hybrid_classifier.py  # VAE + DenseNet fusion
+│   └── README.md         # Module documentation
 ├── classifiers/           # Classification model implementations
 │   ├── biovit.py         # BioViT architecture
 │   ├── densenet121.py    # DenseNet implementation
@@ -180,6 +227,7 @@ project/
 │   ├── models_evaluation/
 │   └── samples/
 ├── scripts/             # Utility scripts
+│   └── train_vae.sh     # 🆕 VAE training script
 ├── streamlit/           # Web application
 │   └── app.py
 ├── LICENSE              # License file
