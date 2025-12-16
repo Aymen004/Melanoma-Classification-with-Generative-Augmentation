@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Model checkpoints and weights (large files)
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.pkl
+*.joblib
+
+# Large data files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+
+# Datasets
+data/images_ddpm/
+data/test_data/
+data/calibrage/
+
+# Results and outputs
+results/
+vae_*/
+hybrid_*/
+test_threshold_*/
+densenet_*/
+calibration_results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
