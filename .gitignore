@@ -52,13 +52,17 @@ data/images_ddpm/
 data/test_data/
 data/calibrage/
 
-# Results and outputs
-results/
-vae_*/
+# Results and outputs (keep CSV files)
+results/**/*.png
+results/**/*.jpg
+results/**/*.py
+vae_*/samples/
+vae_*/checkpoints/*.pth
+!vae_*/checkpoints/best_model.pth
 hybrid_*/
-test_threshold_*/
-densenet_*/
-calibration_results/
+test_threshold_*/**/*.png
+densenet_*/**/*.png
+calibration_results/**/*.png
 
 # OS
 .DS_Store
