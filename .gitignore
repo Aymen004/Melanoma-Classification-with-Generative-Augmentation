@@ -70,3 +70,5 @@ Thumbs.db
 
 # Logs
 *.log
+vae_fix_v2_L1/checkpoints/*.pth
+classifiers/*.pth
